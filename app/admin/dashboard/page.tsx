@@ -29,7 +29,7 @@ export default function AdminDashboard() {
                         <h1 className="text-3xl font-bold tracking-tight">Panel de Administración</h1>
                         <div className="flex gap-4">
                             <Button
-                                variant="destructive"
+                                variant="danger"
                                 onClick={() => {
                                     localStorage.clear();
                                     window.location.reload();
