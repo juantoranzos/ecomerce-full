@@ -92,7 +92,7 @@ export default function Home() {
                             {categories.length > 0 && (
                                 <div className="flex flex-wrap gap-2 justify-center">
                                     <Button
-                                        variant={selectedCategory === null ? "default" : "outline"}
+                                        variant={selectedCategory === null ? "primary" : "outline"}
                                         onClick={() => setSelectedCategory(null)}
                                         className="rounded-full"
                                     >
@@ -101,7 +101,7 @@ export default function Home() {
                                     {categories.map(category => (
                                         <Button
                                             key={category}
-                                            variant={selectedCategory === category ? "default" : "outline"}
+                                            variant={selectedCategory === category ? "primary" : "outline"}
                                             onClick={() => setSelectedCategory(category)}
                                             className="rounded-full"
                                         >
