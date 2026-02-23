@@ -6,12 +6,21 @@ import { collection, setDoc, doc, Timestamp, increment, writeBatch } from 'fireb
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
 export async function POST(request: Request) {
+    console.log(`[Webhook Entry] Received request from: ${request.url}`);
     const url = new URL(request.url);
     const topic = url.searchParams.get('topic') || url.searchParams.get('type');
     const id = url.searchParams.get('id') || url.searchParams.get('data.id');
 
+    console.log(`[Webhook Parsed] Topic/Type: ${topic}, ID: ${id}`);
+
     try {
+        // Log the raw body if possible to see what MP actually sends
+        const bodyText = await request.text();
+        console.log(`[Webhook Raw Body]:`, bodyText);
+
+        // Mercado Pago sometimes sends 'payment' as topic, or 'payment' as type.
         if (topic === 'payment') {
+            console.log(`[Webhook Processing] Payment ID: ${id}`);
             const payment = new Payment(client);
             const paymentData = await payment.get({ id: id! });
 
