@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { db } from '@/lib/firebase';
-import { collection, setDoc, doc, Timestamp, increment, writeBatch } from 'firebase/firestore'; // Changed imports
+import { collection, setDoc, doc, Timestamp, increment, writeBatch, runTransaction } from 'firebase/firestore'; // Changed imports
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
@@ -28,6 +28,7 @@ export async function POST(request: Request) {
                 const items = paymentData.additional_info?.items || [];
 
                 // Create order in Firebase using payment ID for idempotency
+                const orderRef = doc(db, 'orders', String(paymentData.id));
                 const orderData = {
                     paymentId: paymentData.id,
                     status: 'paid',
@@ -39,18 +40,28 @@ export async function POST(request: Request) {
                     trackingNumber: null,
                 };
 
-                // Use a batch to atomically save the order and decrease stock
-                const batch = writeBatch(db);
-                batch.set(doc(db, 'orders', String(paymentData.id)), orderData, { merge: true });
+                // Use runTransaction for strict idempotency
+                // Mercado Pago can send the same webhook multiple times
+                await runTransaction(db, async (transaction) => {
+                    const orderSnap = await transaction.get(orderRef);
 
-                for (const item of items) {
-                    if (item.id) {
-                        const productRef = doc(db, 'products', String(item.id));
-                        batch.update(productRef, { stock: increment(-Number(item.quantity || 1)) });
+                    if (orderSnap.exists()) {
+                        console.log(`[Webhook] Order ${paymentData.id} already processed. Skipping stock deduction.`);
+                        return; // Order already exists, do not deduct stock again
                     }
-                }
 
-                await batch.commit();
+                    // 1. Save the new order
+                    transaction.set(orderRef, orderData);
+
+                    // 2. Deduct stock for each item
+                    for (const item of items) {
+                        if (item.id) {
+                            const productRef = doc(db, 'products', String(item.id));
+                            transaction.update(productRef, { stock: increment(-Number(item.quantity || 1)) });
+                        }
+                    }
+                    console.log(`[Webhook] Successfully processed order ${paymentData.id} and deducted stock.`);
+                });
             }
         }
 
