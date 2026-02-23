@@ -67,6 +67,7 @@ export async function POST(request: Request) {
                 failure: `${baseUrl}/checkout/failure`,
                 pending: `${baseUrl}/checkout/pending`,
             },
+            notification_url: baseUrl.startsWith('https://') ? `${baseUrl}/api/webhooks/mercadopago` : undefined,
             metadata: {
                 shipping_info: shippingInfo,
             },
