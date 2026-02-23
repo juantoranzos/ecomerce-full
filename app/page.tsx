@@ -2,12 +2,12 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter } from 'lucide-react';
-import { Input } from '@/app/components/ui/input';
-import { useProductStore, useCartStore } from '@/app/store';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Navbar } from '@/app/components/navbar';
-import { Footer } from '@/app/components/footer';
+import { Input } from '@/components/ui/input';
+import { useProductStore, useCartStore } from '@/store';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Navbar } from '@/components/navbar';
+import { Footer } from '@/components/footer';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';

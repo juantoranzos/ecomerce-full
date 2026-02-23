@@ -1,13 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { db } from '@/app/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query } from 'firebase/firestore';
+import { productSchema } from '@/lib/validators'; // Import schema
 
 // Types
 export interface Product {
     id: string;
     name: string;
     price: number;
+    stock: number;
     description: string;
     image: string;
     category: string;
@@ -28,8 +30,8 @@ interface CartState {
 }
 
 interface AuthState {
-    user: { email: string; role: 'admin' | 'user' } | null;
-    login: (email: string, role: 'admin' | 'user') => void;
+    user: { email: string; role: 'admin' | 'user'; uid: string } | null;
+    login: (email: string, role: 'admin' | 'user', uid: string) => void;
     logout: () => void;
 }
 
@@ -92,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
     persist(
         (set) => ({
             user: null,
-            login: (email, role) => set({ user: { email, role } }),
+            login: (email, role, uid) => set({ user: { email, role, uid } }),
             logout: () => set({ user: null }),
         }),
         {
@@ -126,6 +128,14 @@ export const useProductStore = create<ProductState>((set, get) => ({
     addProduct: async (newProduct) => {
         try {
             console.log("Adding product:", newProduct);
+
+            // Validate with Zod
+            const validation = productSchema.safeParse(newProduct);
+            if (!validation.success) {
+                // Use the formatted error message or friendly string
+                throw new Error(validation.error.message);
+            }
+
             const docRef = await addDoc(collection(db, 'products'), newProduct);
             console.log("Product added with ID:", docRef.id);
             const product = { ...newProduct, id: docRef.id };

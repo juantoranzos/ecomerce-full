@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
-import { db } from '@/app/lib/firebase'; // Adjust path if needed
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { collection, setDoc, doc, Timestamp, increment, writeBatch } from 'firebase/firestore'; // Changed imports
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
@@ -16,19 +16,32 @@ export async function POST(request: Request) {
             const paymentData = await payment.get({ id: id! });
 
             if (paymentData.status === 'approved') {
-                // Create order in Firebase
+                const items = paymentData.additional_info?.items || [];
+
+                // Create order in Firebase using payment ID for idempotency
                 const orderData = {
                     paymentId: paymentData.id,
                     status: 'paid',
                     total: paymentData.transaction_amount,
-                    items: paymentData.additional_info?.items || [],
+                    items: items,
                     shippingInfo: paymentData.metadata.shipping_info,
                     createdAt: Timestamp.now(),
-                    shippingStatus: 'pending', // pending, shipped
+                    shippingStatus: 'pending',
                     trackingNumber: null,
                 };
 
-                await addDoc(collection(db, 'orders'), orderData);
+                // Use a batch to atomically save the order and decrease stock
+                const batch = writeBatch(db);
+                batch.set(doc(db, 'orders', String(paymentData.id)), orderData, { merge: true });
+
+                for (const item of items) {
+                    if (item.id) {
+                        const productRef = doc(db, 'products', String(item.id));
+                        batch.update(productRef, { stock: increment(-Number(item.quantity || 1)) });
+                    }
+                }
+
+                await batch.commit();
             }
         }
 

@@ -1,22 +1,52 @@
 'use client';
 
-import { useAuthStore } from '@/app/store';
-import { Button } from '@/app/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { useAuthStore } from '@/store'; // Keep for UI, but not for security check
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Package, Users, DollarSign, BarChart } from 'lucide-react';
-import { Navbar } from '@/app/components/navbar';
+import { Navbar } from '@/components/navbar';
 
 export default function AdminDashboard() {
-    const user = useAuthStore((state) => state.user);
+    const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // null = loading
+    const router = useRouter();
 
-    if (!user || user.role !== 'admin') {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p>Access Denied. Admins only.</p>
-                <Link href="/login" className="ml-2 text-blue-500 hover:underline">Login</Link>
-            </div>
-        );
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', user.uid));
+                    if (userDoc.exists() && userDoc.data().role === 'admin') {
+                        setIsAdmin(true);
+                    } else {
+                        setIsAdmin(false);
+                        router.push('/');
+                    }
+                } catch (error) {
+                    console.error("Error verifying admin:", error);
+                    setIsAdmin(false);
+                    router.push('/');
+                }
+            } else {
+                setIsAdmin(false);
+                router.push('/login');
+            }
+        });
+
+        return () => unsubscribe();
+    }, [router]);
+
+    if (isAdmin === null) {
+        return <div className="min-h-screen flex items-center justify-center">Verificando permisos...</div>;
+    }
+
+    if (isAdmin === false) {
+        return null; // Will redirect
     }
 
     return (

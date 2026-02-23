@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCartStore } from '@/app/store';
+import { useCartStore } from '@/store';
 import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
 
@@ -45,7 +45,10 @@ export default function CheckoutPage() {
             if (data.init_point) {
                 window.location.href = data.init_point;
             } else {
-                alert('Error al procesar el pago');
+                console.error("Payment API Error:", data);
+                const errorMessage = data.error || data.message || 'Error desconocido';
+                const details = data.details ? `\n\nDetalles:\n${JSON.stringify(data.details, null, 2)}` : '';
+                alert(`Error al procesar el pago: ${errorMessage}${details}`);
             }
         } catch (error) {
             console.error(error);

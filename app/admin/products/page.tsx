@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useProductStore, useAuthStore, Product } from '@/app/store';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Navbar } from '@/app/components/navbar';
+import { useProductStore, useAuthStore, Product } from '@/store';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Navbar } from '@/components/navbar';
 import { Trash2, Edit, Plus, X, Save } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -19,6 +19,7 @@ export default function AdminProducts() {
     const [formData, setFormData] = useState<Omit<Product, 'id'>>({
         name: '',
         price: 0,
+        stock: 0,
         description: '',
         image: '',
         category: '',
@@ -43,6 +44,7 @@ export default function AdminProducts() {
         setFormData({
             name: product.name,
             price: product.price,
+            stock: product.stock,
             description: product.description,
             image: product.image,
             category: product.category,
@@ -63,6 +65,7 @@ export default function AdminProducts() {
         setFormData({
             name: '',
             price: 0,
+            stock: 0,
             description: '',
             image: 'https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=800&q=80', // Placeholder
             category: '',
@@ -106,7 +109,7 @@ export default function AdminProducts() {
                             </CardHeader>
                             <CardContent>
                                 <div className="grid gap-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Nombre</label>
                                             <Input
@@ -119,7 +122,15 @@ export default function AdminProducts() {
                                             <Input
                                                 type="number"
                                                 value={formData.price}
-                                                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                                                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Stock</label>
+                                            <Input
+                                                type="number"
+                                                value={formData.stock}
+                                                onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value, 10) || 0 })}
                                             />
                                         </div>
                                     </div>
@@ -218,7 +229,10 @@ export default function AdminProducts() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h3 className="font-semibold truncate">{product.name}</h3>
-                                        <p className="text-sm text-muted-foreground truncate">{product.category}</p>
+                                        <div className="flex gap-4">
+                                            <p className="text-sm text-muted-foreground truncate">{product.category}</p>
+                                            <p className="text-sm text-muted-foreground">Stock: {product.stock}</p>
+                                        </div>
                                     </div>
                                     <div className="font-medium w-24 text-right">
                                         ${product.price.toFixed(2)}

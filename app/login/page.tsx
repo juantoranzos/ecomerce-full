@@ -1,14 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuthStore } from '@/app/store';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { useAuthStore } from '@/store';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { auth } from '@/app/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -25,16 +26,36 @@ export default function LoginPage() {
             let userCredential;
             if (isRegistering) {
                 userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                // Create user document with default role
+                await setDoc(doc(db, 'users', userCredential.user.uid), {
+                    email: email,
+                    role: 'user',
+                    createdAt: new Date()
+                });
             } else {
                 userCredential = await signInWithEmailAndPassword(auth, email, password);
             }
 
             const user = userCredential.user;
-            // Simple role logic: if email contains 'admin', make them admin. 
-            // In a real app, this should be stored in a user document in Firestore.
-            const role = email.includes('admin') ? 'admin' : 'user';
 
-            loginState(email, role);
+            // Fetch role from Firestore
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            let role: 'admin' | 'user' = 'user';
+
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data();
+                role = userData.role === 'admin' ? 'admin' : 'user';
+            } else {
+                // Determine if this is the fallback admin (temporarily allow current admin email if needed, or just default to user)
+                // For security, strictly default to 'user' unless DB says otherwise.
+                // However, detailed instructions will be provided to the user to set their role in Firebase Console.
+                role = 'user';
+            }
+
+            // CRITICAL: Pass UID to store
+            loginState(email, role, user.uid);
 
             if (role === 'admin') {
                 router.push('/admin/dashboard');

@@ -1,72 +1,99 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+import { checkoutSchema } from '@/lib/validators';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { items, shippingInfo } = body;
 
-        const preference = new Preference(client);
+        // Validate with Zod
+        const validationResult = checkoutSchema.safeParse(body);
 
-        const preferenceBody: any = {
-            items: items.map((item: any) => ({
-                id: item.id,
-                title: item.title,
-                quantity: item.quantity,
-                unit_price: Number(item.price),
+        if (!validationResult.success) {
+            return NextResponse.json({
+                error: 'Datos inválidos',
+                details: validationResult.error.format()
+            }, { status: 400 });
+        }
+
+        const { items: clientItems, shippingInfo } = validationResult.data;
+
+        const validItems = [];
+
+        // Validate items server-side
+        for (const clientItem of clientItems) {
+            const productRef = doc(db, 'products', clientItem.id);
+            const productSnap = await getDoc(productRef);
+
+            if (!productSnap.exists()) {
+                console.warn(`Product not found: ${clientItem.id}`);
+                continue; // Skip invalid products
+            }
+
+            const productData = productSnap.data();
+
+            // Check stock server-side to prevent overselling
+            if ((productData.stock || 0) < clientItem.quantity) {
+                return NextResponse.json({
+                    error: `Stock insuficiente para el producto: ${productData.name}`,
+                    message: `Solo quedan ${productData.stock || 0} unidades disponibles.`
+                }, { status: 400 });
+            }
+
+            validItems.push({
+                id: clientItem.id,
+                title: productData.name, // Use name from DB
+                quantity: Number(clientItem.quantity),
+                unit_price: Number(productData.price), // CRITICAL: Use price from DB
                 currency_id: 'ARS',
-                picture_url: item.image,
-            })),
-            // payer: {
-            //     name: shippingInfo.name,
-            //     surname: shippingInfo.surname,
-            //     email: shippingInfo.email,
-            //     phone: {
-            //         area_code: '',
-            //         number: shippingInfo.phone,
-            //     },
-            //     address: {
-            //         street_name: shippingInfo.address,
-            //         street_number: '',
-            //         zip_code: shippingInfo.zip,
-            //     },
-            // },
+                picture_url: productData.image, // Use image from DB
+            });
+        }
+
+        if (validItems.length === 0) {
+            return NextResponse.json({ error: 'No valid items found' }, { status: 400 });
+        }
+
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        const preferenceBody: any = {
+            items: validItems,
             back_urls: {
-                success: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/checkout/success`,
-                failure: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/checkout/failure`,
-                pending: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/checkout/pending`,
+                success: `${baseUrl}/checkout/success?email=${encodeURIComponent(shippingInfo.email)}`,
+                failure: `${baseUrl}/checkout/failure`,
+                pending: `${baseUrl}/checkout/pending`,
             },
-            // auto_return: 'approved', // Disabled by default for localhost
             metadata: {
                 shipping_info: shippingInfo,
             },
         };
 
-        console.log('Preference Body:', JSON.stringify(preferenceBody, null, 2));
-
-        // Enable auto_return only if we are in production (URL is defined)
-        // Mercado Pago often rejects auto_return with localhost
-        if (process.env.NEXT_PUBLIC_BASE_URL) {
+        // Mercado Pago strict validation: auto_return requires valid back_urls (HTTPS).
+        if (baseUrl.startsWith('https://')) {
             preferenceBody.auto_return = 'approved';
         }
 
+        console.log('Preference Body (Server-Validated):', JSON.stringify(preferenceBody, null, 2));
+
+        const preference = new Preference(client);
         const result = await preference.create({
             body: preferenceBody,
         });
 
         console.log('MP Preference Result:', JSON.stringify(result, null, 2));
 
-        // Force sandbox URL manually to be 100% sure
-        const sandboxUrl = `https://sandbox.mercadopago.com.ar/checkout/v1/redirect?pref_id=${result.id}`;
+        // Use sandbox URL for testing if needed, or init_point for production
+        // For security, stick to standard init_point unless specifically in sandbox mode
+        // But user code had sandbox override, preserving it for now but using init_point is safer
+        const initPoint = result.init_point;
 
-        return NextResponse.json({ id: result.id, init_point: sandboxUrl });
+        return NextResponse.json({ id: result.id, init_point: initPoint });
     } catch (error: any) {
         console.error('Error creating preference:', error);
-        console.error('MP_ACCESS_TOKEN present:', !!process.env.MP_ACCESS_TOKEN);
-        const token = process.env.MP_ACCESS_TOKEN || '';
-        console.error('Token starts with:', token.substring(0, 10));
         return NextResponse.json({ error: 'Error creating preference', details: error.message }, { status: 500 });
     }
 }

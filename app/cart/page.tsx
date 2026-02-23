@@ -1,9 +1,9 @@
 'use client';
 
-import { useCartStore } from '@/app/store';
-import { Button } from '@/app/components/ui/button';
-import { Navbar } from '@/app/components/navbar';
-import { Footer } from '@/app/components/footer';
+import { useCartStore } from '@/store';
+import { Button } from '@/components/ui/button';
+import { Navbar } from '@/components/navbar';
+import { Footer } from '@/components/footer';
 import { Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';

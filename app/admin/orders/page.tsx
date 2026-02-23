@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/app/store';
-import { db } from '@/app/lib/firebase';
+import { useAuthStore } from '@/store';
+import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { Navbar } from '@/app/components/navbar';
-import { Button } from '@/app/components/ui/button';
+import { Navbar } from '@/components/navbar';
+import { Button } from '@/components/ui/button';
 import { Truck, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 

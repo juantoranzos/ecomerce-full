@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/lib/utils';
 
 // Note: I'm not using class-variance-authority yet, but I'll simulate it for now or just use simple props to keep it lightweight as I didn't install cva.
 // Wait, I didn't install cva. I should stick to simple props or install it.
