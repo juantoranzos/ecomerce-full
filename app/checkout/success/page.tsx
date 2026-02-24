@@ -8,8 +8,9 @@ import { CheckCircle } from 'lucide-react';
 function SuccessContent() {
     const { clearCart } = useCartStore();
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const email = searchParams.get('email');
+    // Email is no longer passed via URL for security reasons
+    // const searchParams = useSearchParams();
+    // const email = searchParams.get('email');
 
     useEffect(() => {
         clearCart();
@@ -24,19 +25,11 @@ function SuccessContent() {
             <p className="text-gray-600 mb-4">
                 El pago se ha procesado correctamente.
             </p>
-            {email ? (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8">
-                    <p className="text-sm text-blue-800">
-                        Te hemos enviado la información detallada de tu compra al correo electrónico:
-                        <br />
-                        <span className="font-semibold text-blue-900 mt-2 block">{email}</span>
-                    </p>
-                </div>
-            ) : (
-                <p className="text-gray-600 mb-8">
-                    Gracias por tu compra. Te enviamos un email con los detalles.
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8">
+                <p className="text-sm text-blue-800">
+                    Te enviaremos la información detallada de tu compra al correo electrónico asociado a la misma.
                 </p>
-            )}
+            </div>
             <button
                 onClick={() => router.push('/')}
                 className="w-full bg-black text-white font-medium py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors"

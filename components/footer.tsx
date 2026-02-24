@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export function Footer() {
     return (
         <footer className="border-t bg-gray-50">
@@ -18,11 +20,11 @@ export function Footer() {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-semibold mb-4">Soporte</h4>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li>Preguntas Frecuentes</li>
-                            <li>Envíos</li>
-                            <li>Devoluciones</li>
+                        <h4 className="font-semibold mb-4">Soporte y Legales</h4>
+                        <ul className="space-y-2 text-sm text-muted-foreground flex flex-col items-start">
+                            <li><Link href="/#contacto" className="hover:underline">Contacto</Link></li>
+                            <li><Link href="/legal/terms" className="hover:underline">Términos y Condiciones</Link></li>
+                            <li><Link href="/legal/privacy" className="hover:underline">Política de Privacidad</Link></li>
                         </ul>
                     </div>
                     <div>

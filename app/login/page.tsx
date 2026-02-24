@@ -57,6 +57,14 @@ export default function LoginPage() {
             // CRITICAL: Pass UID to store
             loginState(email, role, user.uid);
 
+            // Server-side Session Generation
+            const idToken = await user.getIdToken();
+            await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: idToken, role: role })
+            });
+
             if (role === 'admin') {
                 router.push('/admin/dashboard');
             } else {
