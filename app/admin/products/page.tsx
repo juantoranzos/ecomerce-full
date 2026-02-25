@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useProductStore, useAuthStore, Product } from '@/store';
-import { db, storage } from '@/lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+// Removed firebase storage imports
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +18,7 @@ export default function AdminProducts() {
     const [isAdding, setIsAdding] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<Omit<Product, 'id'>>({
         name: '',
@@ -76,6 +76,7 @@ export default function AdminProducts() {
             features: []
         });
         setUploadProgress(0);
+        setUploadError(null);
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,29 +84,37 @@ export default function AdminProducts() {
         if (!file) return;
 
         setUploading(true);
-        // Create a unique filename
-        const filename = `${Date.now()}-${file.name}`;
-        const storageRef = ref(storage, `products/${filename}`);
+        setUploadError(null);
+        setUploadProgress(10); // Start progress slightly
 
-        const uploadTask = uploadBytesResumable(storageRef, file);
+        const formDataCloudinary = new FormData();
+        formDataCloudinary.append('file', file);
+        // User's Unsigned Upload Preset
+        formDataCloudinary.append('upload_preset', 'tienda_importo');
 
-        uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setUploadProgress(progress);
-            },
-            (error) => {
-                console.error("Upload failed", error);
-                alert("Error al subir la imagen");
-                setUploading(false);
-            },
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                setFormData(prev => ({ ...prev, image: downloadURL }));
-                setUploading(false);
+        try {
+            // Using the Cloud Name provided by the user
+            const response = await fetch('https://api.cloudinary.com/v1_1/dc28fdbna/image/upload', {
+                method: 'POST',
+                body: formDataCloudinary,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'Error al subir la imagen');
             }
-        );
+
+            const data = await response.json();
+
+            // Cloudinary returns the secure HTTPS URL of the uploaded image
+            setFormData(prev => ({ ...prev, image: data.secure_url }));
+            setUploadProgress(100);
+        } catch (error: any) {
+            console.error("Cloudinary upload failed", error);
+            setUploadError(`Error de subida: ${error.message}`);
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleSave = async () => {
@@ -212,6 +221,9 @@ export default function AdminProducts() {
                                                             <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
                                                                 <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
                                                             </div>
+                                                        )}
+                                                        {uploadError && (
+                                                            <p className="text-sm text-red-500 font-medium">{uploadError}</p>
                                                         )}
                                                     </div>
                                                 )}
