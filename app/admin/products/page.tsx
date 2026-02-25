@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useProductStore, useAuthStore, Product } from '@/store';
+// Removed firebase storage imports
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,9 @@ export default function AdminProducts() {
     const user = useAuthStore((state) => state.user);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<Omit<Product, 'id'>>({
         name: '',
@@ -67,10 +71,50 @@ export default function AdminProducts() {
             price: 0,
             stock: 0,
             description: '',
-            image: 'https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=800&q=80', // Placeholder
+            image: '', // Will be set after upload
             category: '',
             features: []
         });
+        setUploadProgress(0);
+        setUploadError(null);
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        setUploadError(null);
+        setUploadProgress(10); // Start progress slightly
+
+        const formDataCloudinary = new FormData();
+        formDataCloudinary.append('file', file);
+        // User's Unsigned Upload Preset
+        formDataCloudinary.append('upload_preset', 'tienda_importo');
+
+        try {
+            // Using the Cloud Name provided by the user
+            const response = await fetch('https://api.cloudinary.com/v1_1/dc28fdbna/image/upload', {
+                method: 'POST',
+                body: formDataCloudinary,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'Error al subir la imagen');
+            }
+
+            const data = await response.json();
+
+            // Cloudinary returns the secure HTTPS URL of the uploaded image
+            setFormData(prev => ({ ...prev, image: data.secure_url }));
+            setUploadProgress(100);
+        } catch (error: any) {
+            console.error("Cloudinary upload failed", error);
+            setUploadError(`Error de subida: ${error.message}`);
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleSave = async () => {
@@ -150,11 +194,40 @@ export default function AdminProducts() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium">URL de Imagen</label>
-                                            <Input
-                                                value={formData.image}
-                                                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                                            />
+                                            <label className="text-sm font-medium">Imagen del Producto</label>
+                                            <div className="flex flex-col gap-2">
+                                                {formData.image ? (
+                                                    <div className="relative h-32 w-32 border rounded-md overflow-hidden bg-gray-50">
+                                                        <Image src={formData.image} alt="Preview" fill className="object-cover" />
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            className="absolute top-1 right-1 h-6 w-6 z-10 opacity-80 hover:opacity-100 bg-red-50 text-red-500 border-red-200"
+                                                            onClick={() => setFormData({ ...formData, image: '' })}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-2">
+                                                        <Input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={handleImageUpload}
+                                                            disabled={uploading}
+                                                            className="cursor-pointer file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                                                        />
+                                                        {uploading && (
+                                                            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                                                                <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                                                            </div>
+                                                        )}
+                                                        {uploadError && (
+                                                            <p className="text-sm text-red-500 font-medium">{uploadError}</p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -205,9 +278,11 @@ export default function AdminProducts() {
                                         </Button>
                                     </div>
 
-                                    <div className="flex justify-end gap-2 mt-4">
+                                    <div className="flex justify-end gap-2 mt-4 cursor-pointer">
                                         <Button variant="outline" onClick={handleCancel}>Cancelar</Button>
-                                        <Button onClick={handleSave}>Guardar Cambios</Button>
+                                        <Button onClick={handleSave} disabled={uploading || !formData.image}>
+                                            <Save className="mr-2 h-4 w-4" /> Guardar Cambios
+                                        </Button>
                                     </div>
                                 </div>
                             </CardContent>

@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { RevocationButton } from "@/components/ui/RevocationButton";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,6 +34,7 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <RevocationButton />
       </body>
     </html>
   );

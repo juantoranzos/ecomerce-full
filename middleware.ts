@@ -2,21 +2,26 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-    // Note: Since we are using client-side Zustand for auth (mock), 
-    // server-side middleware can't access that state directly.
-    // However, for a real app, we would check cookies/tokens here.
-    // For this mock implementation, we'll rely on client-side checks in the components
-    // but I'll leave this structure here as a placeholder for where real auth would go.
+    // Check if the route is an admin route
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+        // Retrieve the secure HttpOnly cookies set by our login API
+        const sessionToken = request.cookies.get('auth_session')?.value;
+        const userRole = request.cookies.get('user_role')?.value;
 
-    // In a real app:
-    // const token = request.cookies.get('token');
-    // if (!token && request.nextUrl.pathname.startsWith('/admin')) {
-    //   return NextResponse.redirect(new URL('/login', request.url));
-    // }
+        // Verify session exists and role is 'admin'
+        if (!sessionToken || userRole !== 'admin') {
+            const loginUrl = new URL('/login', request.url);
+            // Optional: Pass the original requested URL to redirect back after login
+            loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
+
+            console.log(`[Middleware] Unauthorized attempt to access admin area: ${request.nextUrl.pathname}`);
+            return NextResponse.redirect(loginUrl);
+        }
+    }
 
     return NextResponse.next();
 }
 
 export const config = {
-    matcher: '/admin/:path*',
+    matcher: ['/admin/:path*'],
 };

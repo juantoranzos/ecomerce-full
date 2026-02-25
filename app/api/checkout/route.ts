@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         const preferenceBody: any = {
             items: validItems,
             back_urls: {
-                success: `${baseUrl}/checkout/success?email=${encodeURIComponent(shippingInfo.email)}`,
+                success: `${baseUrl}/checkout/success`,
                 failure: `${baseUrl}/checkout/failure`,
                 pending: `${baseUrl}/checkout/pending`,
             },
@@ -78,14 +78,19 @@ export async function POST(request: Request) {
             preferenceBody.auto_return = 'approved';
         }
 
-        console.log('Preference Body (Server-Validated):', JSON.stringify(preferenceBody, null, 2));
+        // Avoid logging full preferenceBody in production as it contains PII (shipping_info)
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('Preference Body (Server-Validated):', JSON.stringify(preferenceBody, null, 2));
+        }
 
         const preference = new Preference(client);
         const result = await preference.create({
             body: preferenceBody,
         });
 
-        console.log('MP Preference Result:', JSON.stringify(result, null, 2));
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('MP Preference Result ID:', result.id);
+        }
 
         // Use sandbox URL for testing if needed, or init_point for production
         // For security, stick to standard init_point unless specifically in sandbox mode

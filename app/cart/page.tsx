@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useCartStore } from '@/store';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/navbar';
@@ -11,6 +12,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CartPage() {
     const { items, removeItem, updateQuantity, total, clearCart } = useCartStore();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) {
+        return (
+            <div className="min-h-screen flex flex-col">
+                <Navbar />
+                <main className="flex-1 py-12 md:py-20">
+                    <div className="container mx-auto px-4">
+                        <h1 className="text-3xl md:text-4xl font-bold mb-8 tracking-tight">Carrito de Compras</h1>
+                        <div className="flex justify-center py-20">
+                            <p className="text-gray-500">Cargando carrito...</p>
+                        </div>
+                    </div>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex flex-col">
